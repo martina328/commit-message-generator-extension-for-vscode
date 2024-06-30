@@ -1,3 +1,5 @@
+// TO-DO 1回APIミスると上手くいかないから修正必須
+
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
@@ -14,22 +16,9 @@ export async function activate(context: vscode.ExtensionContext) {
     // Use the console to output diagnostic information (console.log) and errors (console.error)
     // This line of code will only be executed once when your extension is activated
     console.log('Congratulations, your extension "commit-message-generator" is now active!');
+    await context.secrets.delete("Open AI API key");
 
     try {
-        // Display input box to get OpenAI API Key from user
-        const apiKey = await vscode.window.showInputBox({
-            prompt: 'Enter OpenAI API Key',
-            placeHolder: 'API Key'
-        });
-        // Check if API key is provided
-        if (!apiKey) {
-            vscode.window.showInformationMessage('OpenAI API key is required to use this extension.');
-            return;
-        }
-
-        // Initialize OpenAI with the provided API key
-        openai = new OpenAI({ apiKey });
-
         // The command has been defined in the package.json file
         // Now provide the implementation of the command with registerCommand
         // The commandId parameter must match the command field in package.json
@@ -37,6 +26,24 @@ export async function activate(context: vscode.ExtensionContext) {
             // The code you place here will be executed every time your command is executed
             // Display a message box to the user
             try {
+                // Display input box to get OpenAI API Key from user
+                let apiKey = await context.secrets.get("Open AI API key");
+                if (!apiKey) {
+                    const inputapiKey = await vscode.window.showInputBox({
+                        prompt: 'Enter OpenAI API Key',
+                        placeHolder: 'API Key'
+                    });
+                    // Check if API key is provided
+                    if (!inputapiKey) {
+                        vscode.window.showInformationMessage('OpenAI API key is required to use this extension.');
+                        return;
+                    }
+                    context.secrets.store("Open AI API key", inputapiKey);
+                    apiKey = inputapiKey;
+                }
+
+                // Initialize OpenAI with the provided API key
+                openai = new OpenAI({ apiKey });
                 // Ensure the workspace is opened
                 if (!isWorkspaceOpen()) {
                     vscode.window.showInformationMessage('You need to open a workspace before generating commit messages.');
@@ -74,11 +81,12 @@ export async function activate(context: vscode.ExtensionContext) {
     } catch (error: any) {
         console.error('Error initializing OpenAI:', error);
         vscode.window.showErrorMessage('Error initializing OpenAI: ' + error.message);
+        return; // Stop further execution of the extension
     }
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
 
 /**
  * Check if a workspace is currently open in VSCode.
@@ -124,7 +132,7 @@ function getGitDiff(cwd: string): Promise<string> {
  */
 async function generateAiCommitMessage(client: OpenAI, diff: string): Promise<string> {
     // Construct prompt for OpenAI
-    const userPrompt = 'Generate a simple and clear commit message for the following changes:\n' + diff;
+    const userPrompt = 'According to the principles of semantic messages, generate a simple and clear commit message for the following changes:\n' + diff;
 
     // Call OpenAI to generate completion
     const chatCompletion = await client.chat.completions.create({
