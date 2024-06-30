@@ -1,8 +1,9 @@
 {
   "name": "commit-message-generator",
+  "publisher": "martina328",
   "displayName": "commit-message-generator",
   "description": "",
-  "version": "0.0.1",
+  "version": "1.0.2",
   "engines": {
     "vscode": "^1.90.0"
   },
